@@ -16,6 +16,8 @@ app.listen(PORT, () => {
 // ====== Part 2: The WhatsApp Bot Logic ======
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
+// FINAL FIX PART 1: Import the new library
+const qrcode = require('qrcode-terminal');
 
 const OWNER_NUMBER = '2348086850026@s.whatsapp.net';
 
@@ -24,7 +26,6 @@ async function connectToWhatsApp() {
 
     const sock = makeWASocket({
         auth: state,
-        // CHANGE 1: We have REMOVED the unreliable printQRInTerminal option
         browser: Browsers.macOS('Desktop'),
         shouldIgnoreJid: jid => jid.includes('@g.us'),
     });
@@ -33,14 +34,11 @@ async function connectToWhatsApp() {
 
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
-
-        // CHANGE 2: We now MANUALLY print the QR code if it exists. THIS IS THE GUARANTEED FIX.
+        
         if (qr) {
-            console.log('------------------------------------------------');
-            console.log('           NEW QR CODE RECEIVED               ');
-            console.log('   Please scan it with your WhatsApp phone.   ');
-            console.log('------------------------------------------------');
-            console.log(qr); // This line prints the actual QR code data.
+            // FINAL FIX PART 2: Use the library to draw the QR code in the terminal
+            // The {small: true} option makes it fit nicely in the Render logs.
+            qrcode.generate(qr, { small: true });
         }
 
         if (connection === 'close') {
