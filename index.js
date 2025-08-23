@@ -16,8 +16,7 @@ app.listen(PORT, () => {
 // ====== Part 2: The WhatsApp Bot Logic ======
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
-// FINAL FIX PART 1: Import the new library
-const qrcode = require('qrcode-terminal');
+// We have removed the qrcode-terminal library
 
 const OWNER_NUMBER = '2348086850026@s.whatsapp.net';
 
@@ -35,10 +34,14 @@ async function connectToWhatsApp() {
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
         
+        // THIS IS THE FINAL FIX: We will now print ONLY the raw qr data string
         if (qr) {
-            // FINAL FIX PART 2: Use the library to draw the QR code in the terminal
-            // The {small: true} option makes it fit nicely in the Render logs.
-            qrcode.generate(qr, { small: true });
+            console.log('------------------------------------------------');
+            console.log('           NEW QR CODE DATA RECEIVED          ');
+            console.log('   Copy the long line of text below and use   ');
+            console.log('      a QR Code Generator website to view it. ');
+            console.log('------------------------------------------------');
+            console.log(qr); // This prints the raw data string, e.g., "2@..."
         }
 
         if (connection === 'close') {
