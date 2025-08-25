@@ -16,7 +16,6 @@ app.listen(PORT, () => {
 // ====== Part 2: The WhatsApp Bot Logic ======
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
-// We have removed the qrcode-terminal library
 
 const OWNER_NUMBER = '2348086850026@s.whatsapp.net';
 
@@ -27,23 +26,38 @@ async function connectToWhatsApp() {
         auth: state,
         browser: Browsers.macOS('Desktop'),
         shouldIgnoreJid: jid => jid.includes('@g.us'),
+        // We are no longer using any QR code options
     });
+
+    // THIS IS THE NEW PAIRING CODE LOGIC
+    // It will only run if the bot is not yet connected
+    if (!sock.authState.creds.registered) {
+        // IMPORTANT: ENTER YOUR WHATSAPP NUMBER WITHOUT THE "+" or any spaces
+        const phoneNumber = '2348086850026';
+        
+        console.log(`Requesting Pairing Code for the number: ${phoneNumber}`);
+        
+        // Wait 3 seconds before requesting the code
+        setTimeout(async () => {
+            try {
+                const code = await sock.requestPairingCode(phoneNumber);
+                console.log('------------------------------------------------');
+                console.log('           YOUR PAIRING CODE IS:              ');
+                console.log(`               ${code}                       `);
+                console.log('------------------------------------------------');
+                console.log('Enter this code in WhatsApp on your phone.');
+            } catch (error) {
+                console.error("Failed to request pairing code:", error);
+            }
+        }, 3000);
+    }
 
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
+        const { connection, lastDisconnect } = update;
+        // We no longer need the 'qr' part here
         
-        // THIS IS THE FINAL FIX: We will now print ONLY the raw qr data string
-        if (qr) {
-            console.log('------------------------------------------------');
-            console.log('           NEW QR CODE DATA RECEIVED          ');
-            console.log('   Copy the long line of text below and use   ');
-            console.log('      a QR Code Generator website to view it. ');
-            console.log('------------------------------------------------');
-            console.log(qr); // This prints the raw data string, e.g., "2@..."
-        }
-
         if (connection === 'close') {
             const shouldReconnect = (lastDisconnect.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
             console.log('Connection closed. Reconnecting:', shouldReconnect);
@@ -51,10 +65,11 @@ async function connectToWhatsApp() {
                 connectToWhatsApp();
             }
         } else if (connection === 'open') {
-            console.log('✅ WhatsApp connection opened!');
+            console.log('✅ WhatsApp connection opened! Bot is ready.');
         }
     });
-
+    
+    // The message handling part remains the same
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];
         if (!msg.message) return;
@@ -62,9 +77,7 @@ async function connectToWhatsApp() {
         const sender = msg.key.participant || msg.key.remoteJid;
         const incomingText = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
         
-        if (!incomingText.startsWith('.')) {
-            return;
-        }
+        if (!incomingText.startsWith('.')) return;
 
         const prefix = '.';
         const args = incomingText.slice(prefix.length).trim().split(/ +/);
