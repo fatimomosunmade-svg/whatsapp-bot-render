@@ -26,37 +26,12 @@ async function connectToWhatsApp() {
         auth: state,
         browser: Browsers.macOS('Desktop'),
         shouldIgnoreJid: jid => jid.includes('@g.us'),
-        // We are no longer using any QR code options
     });
-
-    // THIS IS THE NEW PAIRING CODE LOGIC
-    // It will only run if the bot is not yet connected
-    if (!sock.authState.creds.registered) {
-        // IMPORTANT: ENTER YOUR WHATSAPP NUMBER WITHOUT THE "+" or any spaces
-        const phoneNumber = '2348086850026';
-        
-        console.log(`Requesting Pairing Code for the number: ${phoneNumber}`);
-        
-        // Wait 3 seconds before requesting the code
-        setTimeout(async () => {
-            try {
-                const code = await sock.requestPairingCode(phoneNumber);
-                console.log('------------------------------------------------');
-                console.log('           YOUR PAIRING CODE IS:              ');
-                console.log(`               ${code}                       `);
-                console.log('------------------------------------------------');
-                console.log('Enter this code in WhatsApp on your phone.');
-            } catch (error) {
-                console.error("Failed to request pairing code:", error);
-            }
-        }, 3000);
-    }
 
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', (update) => {
+    sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
-        // We no longer need the 'qr' part here
         
         if (connection === 'close') {
             const shouldReconnect = (lastDisconnect.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
@@ -65,14 +40,34 @@ async function connectToWhatsApp() {
                 connectToWhatsApp();
             }
         } else if (connection === 'open') {
-            console.log('✅ WhatsApp connection opened! Bot is ready.');
+            console.log('✅ Connection is Open!');
+            
+            // THE FINAL FIX IS HERE:
+            // We only request a pairing code IF the connection is open AND we are not yet logged in.
+            if (!sock.authState.creds.registered) {
+                console.log('Bot is not registered. Requesting Pairing Code...');
+                const phoneNumber = '2348086850026'; // Your number without "+"
+                
+                try {
+                    const code = await sock.requestPairingCode(phoneNumber);
+                    console.log('------------------------------------------------');
+                    console.log('           YOUR PAIRING CODE IS:              ');
+                    console.log(`               ${code}                       `);
+                    console.log('------------------------------------------------');
+                    console.log('Enter this code in WhatsApp on your phone.');
+                } catch (error) {
+                    console.error("Failed to request pairing code:", error);
+                }
+            } else {
+                console.log("Bot is already registered. Ready to go!");
+            }
         }
     });
     
     // The message handling part remains the same
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];
-        if (!msg.message) return;
+        if (!msg.message || msg.key.fromMe) return; // Restored this line for safety
 
         const sender = msg.key.participant || msg.key.remoteJid;
         const incomingText = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
