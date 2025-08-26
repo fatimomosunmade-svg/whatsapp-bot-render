@@ -9,10 +9,12 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "@adiwajshing/keyed-db": "^0.2.4",
-    "@whiskeysockets/baileys": "^6.7.18",
-    "express": "^5.1.0"
+    "@whiskeysockets/baileys": "^6.7.5",
+    "express": "^4.19.2"
   }
 }

@@ -42,11 +42,9 @@ async function connectToWhatsApp() {
         } else if (connection === 'open') {
             console.log('✅ Connection is Open!');
             
-            // THE FINAL FIX IS HERE:
-            // We only request a pairing code IF the connection is open AND we are not yet logged in.
             if (!sock.authState.creds.registered) {
                 console.log('Bot is not registered. Requesting Pairing Code...');
-                const phoneNumber = '2348086850026'; // Your number without "+"
+                const phoneNumber = '2348086850026';
                 
                 try {
                     const code = await sock.requestPairingCode(phoneNumber);
@@ -64,10 +62,9 @@ async function connectToWhatsApp() {
         }
     });
     
-    // The message handling part remains the same
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];
-        if (!msg.message || msg.key.fromMe) return; // Restored this line for safety
+        if (!msg.message || msg.key.fromMe) return;
 
         const sender = msg.key.participant || msg.key.remoteJid;
         const incomingText = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
